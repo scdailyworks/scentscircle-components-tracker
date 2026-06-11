@@ -746,7 +746,7 @@ export default function App() {
                       <tr key={h.id||i}>
                         <td style={{ color:"#5a4a20", fontSize:11 }}>{i+1}</td>
                         <td style={{ color:"#d4b96a", whiteSpace:"nowrap" }}>{formatDate(h.date)}</td>
-                        <td><span className="wh-badge">{h.warehouse||h.from?`${h.from}→${h.to}`:("—")}</span></td>
+                        <td><span className="wh-badge">{h.type==="transfer"?(h.from&&h.to?`${h.from}→${h.to}`:"Transfer"):(h.warehouse||"—")}</span></td>
                         <td style={{ color:"#c9a84c" }}>{h.category||"Transfer"}</td>
                         <td style={{ fontWeight:600, color:"#f5e6b0" }}>{h.item}</td>
                         <td style={{ color:"#7a6a30" }}>{h.vendor||h.type==="transfer"?"⇄ Transfer":"—"}</td>
