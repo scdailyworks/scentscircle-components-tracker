@@ -23,19 +23,14 @@ function formatDate(d) {
 const emptyProduct = { productType: "Aerosol", type: AEROSOL_FLAVORS[0], qty: 1 };
 const emptyCustomer = { name: "", location: "", machines: "" };
 
-
 function ReportsTab({ logs, customers }) {
   const now = new Date();
   const [reportMonth, setReportMonth] = React.useState(
     `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`
   );
-
   const filtered = React.useMemo(() => {
     if (!reportMonth) return logs;
-    return logs.filter(l => {
-      const clean = String(l.date).split("T")[0];
-      return clean.startsWith(reportMonth);
-    });
+    return logs.filter(l => String(l.date).split("T")[0].startsWith(reportMonth));
   }, [logs, reportMonth]);
 
   const summary = React.useMemo(() => {
@@ -61,12 +56,10 @@ function ReportsTab({ logs, customers }) {
 
   return (
     <>
-      {/* Filter Row */}
       <div style={{ display: "flex", gap: 14, marginBottom: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div>
           <label>Select Month</label>
-          <input type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)}
-            style={{ width: 200 }} />
+          <input type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ width: 200 }} />
         </div>
         {reportMonth && (
           <button onClick={() => setReportMonth("")}
@@ -75,11 +68,9 @@ function ReportsTab({ logs, customers }) {
           </button>
         )}
         <div style={{ marginLeft: "auto", alignSelf: "flex-end", fontSize: 13, color: "#7a6a30", fontWeight: 500 }}>
-          {filtered.length} service record{filtered.length !== 1 ? "s" : ""}
+          {filtered.length} record{filtered.length !== 1 ? "s" : ""}
         </div>
       </div>
-
-      {/* Totals */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 20 }}>
         {[
           { label: "Total Services", value: filtered.length, color: "#f5d060" },
@@ -93,27 +84,20 @@ function ReportsTab({ logs, customers }) {
           </div>
         ))}
       </div>
-
-      {/* Per Customer Table */}
       <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d060", marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>
-        📊 {reportMonth ? `Report: ${new Date(reportMonth+"-01").toLocaleString("en",{month:"long",year:"numeric"})}` : "All Time Report"}
+        {reportMonth ? `Report: ${new Date(reportMonth+"-01").toLocaleString("en",{month:"long",year:"numeric"})}` : "All Time Report"}
       </div>
       <div style={{ background: "#0f0e00", border: "1px solid #3a2e10", borderRadius: 14, overflow: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ background: "#0a0800", borderBottom: "1px solid #3a2e10" }}>
             <tr>
-              <th style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>#</th>
-              <th style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>Customer</th>
-              <th style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>Visits</th>
-              <th style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>Aerosols</th>
-              <th style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>Batteries</th>
-              <th style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>Breakdown</th>
+              {["#","Customer","Visits","Aerosols","Batteries","Breakdown"].map(h => (
+                <th key={h} style={{ color: "#c9a84c", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", padding: "10px 14px", textAlign: "left" }}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {summary.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "#5a4a20", fontSize: 13 }}>No data found for selected period.</td></tr>
-            )}
+            {summary.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "#5a4a20", fontSize: 13 }}>No data found.</td></tr>}
             {summary.map(([customer, d], i) => (
               <tr key={customer} style={{ borderBottom: "1px solid #2a2000" }}>
                 <td style={{ padding: "11px 14px", color: "#5a4a20", fontSize: 11 }}>{i+1}</td>
@@ -140,31 +124,31 @@ export default function ServiceTracker() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncStatus, setSyncStatus] = useState("synced");
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   const [logs, setLogs] = useState([]);
   const [stock, setStock] = useState({ AA: 0, AAA: 0, C: 0, D: 0, aerosols: {} });
   const [customers, setCustomers] = useState([]);
   const [stockHistory, setStockHistory] = useState([]);
 
-  // Log form
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [serviceDate, setServiceDate] = useState(today());
   const [products, setProducts] = useState([{ ...emptyProduct }]);
   const [notes, setNotes] = useState("");
   const [showLogForm, setShowLogForm] = useState(false);
 
-  // Stock form
   const [showStockForm, setShowStockForm] = useState(false);
   const [stockForm, setStockForm] = useState({ itemType: "battery", batteryType: "AA", flavor: AEROSOL_FLAVORS[0], qty: "", dateReceived: today(), vendor: "" });
 
-  // Customer form
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerForm, setCustomerForm] = useState({ ...emptyCustomer });
   const [editCustomerId, setEditCustomerId] = useState(null);
 
-  // Log filters
   const [filterDate, setFilterDate] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerPage, setCustomerPage] = useState(1);
+  const CUSTOMER_PAGE_SIZE = 15;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -173,9 +157,20 @@ export default function ServiceTracker() {
       const json = await res.json();
       if (json.success) {
         setLogs(json.logs || []);
-        setStock(json.stock || { AA: 0, AAA: 0, C: 0, D: 0, aerosols: {} });
+        // Fix all stock values to proper numbers
+        const rawStock = json.stock || { AA: 0, AAA: 0, C: 0, D: 0, aerosols: {} };
+        const fixedAerosols = {};
+        Object.entries(rawStock.aerosols || {}).forEach(([k, v]) => { fixedAerosols[k] = Number(v) || 0; });
+        setStock({ 
+          AA: Number(rawStock.AA) || 0, 
+          AAA: Number(rawStock.AAA) || 0, 
+          C: Number(rawStock.C) || 0, 
+          D: Number(rawStock.D) || 0, 
+          aerosols: fixedAerosols 
+        });
         setCustomers(json.customers || []);
         setStockHistory(json.stockHistory || []);
+        setLastRefresh(new Date());
       }
     } catch { setSyncStatus("error"); }
     setLoading(false);
@@ -198,8 +193,13 @@ export default function ServiceTracker() {
 
   const lowStockAlerts = useMemo(() => {
     const alerts = [];
-    BATTERY_TYPES.forEach(t => { if ((stock[t] || 0) < LOW_STOCK_THRESHOLD) alerts.push({ name: `${t} Battery`, qty: stock[t] || 0 }); });
-    Object.entries(stock.aerosols || {}).forEach(([f, qty]) => { if (qty < LOW_STOCK_THRESHOLD) alerts.push({ name: f, qty }); });
+    BATTERY_TYPES.forEach(t => { 
+      if ((stock[t] || 0) < LOW_STOCK_THRESHOLD) alerts.push({ name: `${t} Battery`, qty: stock[t] || 0 }); 
+    });
+    Object.entries(stock.aerosols || {}).forEach(([f, val]) => { 
+      const qty = Number(val) || 0; 
+      if (qty < LOW_STOCK_THRESHOLD) alerts.push({ name: f, qty }); 
+    });
     return alerts;
   }, [stock]);
 
@@ -232,11 +232,8 @@ export default function ServiceTracker() {
   function submitLog() {
     if (!selectedCustomer || products.length === 0) return;
     const entry = {
-      id: Date.now(),
-      date: serviceDate,
-      customer: selectedCustomer,
-      products: JSON.stringify(products),
-      notes,
+      id: Date.now(), date: serviceDate, customer: selectedCustomer,
+      products: JSON.stringify(products), notes,
       totalAerosol: products.filter(p => p.productType === "Aerosol").reduce((s, p) => s + Number(p.qty), 0),
       totalBatteries: products.filter(p => p.productType === "Battery").reduce((s, p) => s + Number(p.qty), 0),
     };
@@ -247,28 +244,14 @@ export default function ServiceTracker() {
 
   function submitStock() {
     if (!stockForm.qty || Number(stockForm.qty) <= 0) return;
-    const updated = { ...stock };
+    const updated = { ...stock, aerosols: { ...stock.aerosols } };
     const itemName = stockForm.itemType === "battery" ? `${stockForm.batteryType} Battery` : stockForm.flavor;
-    const prevQty = stockForm.itemType === "battery" ? (updated[stockForm.batteryType] || 0) : (updated.aerosols?.[stockForm.flavor] || 0);
+    const prevQty = stockForm.itemType === "battery" ? (updated[stockForm.batteryType] || 0) : (updated.aerosols[stockForm.flavor] || 0);
     const addQty = Number(stockForm.qty);
     const closingQty = prevQty + addQty;
-
-    if (stockForm.itemType === "battery") {
-      updated[stockForm.batteryType] = closingQty;
-    } else {
-      updated.aerosols = { ...(updated.aerosols || {}), [stockForm.flavor]: closingQty };
-    }
-
-    const historyEntry = {
-      id: Date.now(),
-      date: stockForm.dateReceived,
-      item: itemName,
-      stockInHand: prevQty,
-      received: addQty,
-      closing: closingQty,
-      vendor: stockForm.vendor,
-    };
-
+    if (stockForm.itemType === "battery") updated[stockForm.batteryType] = closingQty;
+    else updated.aerosols[stockForm.flavor] = closingQty;
+    const historyEntry = { id: Date.now(), date: stockForm.dateReceived, item: itemName, stockInHand: prevQty, received: addQty, closing: closingQty, vendor: stockForm.vendor };
     setStock(updated);
     setStockHistory(h => [historyEntry, ...h]);
     postToSheet({ action: "updateStock", stock: updated, historyEntry });
@@ -297,8 +280,16 @@ export default function ServiceTracker() {
     postToSheet({ action: "updateCustomers", customers: updated });
   }
 
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return customers;
+    return customers.filter(c => c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.location?.toLowerCase().includes(customerSearch.toLowerCase()));
+  }, [customers, customerSearch]);
+  const totalCustomerPages = Math.ceil(filteredCustomers.length / CUSTOMER_PAGE_SIZE);
+  const paginatedCustomers = filteredCustomers.slice((customerPage - 1) * CUSTOMER_PAGE_SIZE, customerPage * CUSTOMER_PAGE_SIZE);
+
   const syncColor = syncStatus === "synced" ? "#c9a84c" : syncStatus === "saving" ? "#facc15" : "#ef4444";
   const syncLabel = syncStatus === "synced" ? "✓ Synced" : syncStatus === "saving" ? "⟳ Saving..." : "✕ Sync Error";
+  const lastRefreshStr = lastRefresh ? lastRefresh.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
 
   return (
     <div style={{ fontFamily: "'Poppins', sans-serif", background: "#050400", minHeight: "100vh", width: "100%", color: "#f0e6c0" }}>
@@ -352,7 +343,10 @@ export default function ServiceTracker() {
             {tab === TABS.STOCK && <button className="btn btn-gold" onClick={() => setShowStockForm(true)}><span style={{ fontSize: 16 }}>+</span> Add Stock</button>}
             {tab === TABS.CUSTOMERS && <button className="btn btn-gold" onClick={() => { setCustomerForm({ ...emptyCustomer }); setEditCustomerId(null); setShowCustomerForm(true); }}><span style={{ fontSize: 16 }}>+</span> Add Customer</button>}
           </div>
-          <span style={{ fontSize: 11, color: syncColor, fontWeight: 600 }}>{syncLabel}</span>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: syncColor, fontWeight: 600 }}>{syncLabel}</span>
+            {lastRefreshStr && <span style={{ fontSize: 11, color: "#7a6a30" }}>· {lastRefreshStr}</span>}
+          </div>
         </div>
       </div>
 
@@ -386,10 +380,9 @@ export default function ServiceTracker() {
 
         {!loading && <>
 
-          {/* ── SERVICE LOG TAB ── */}
+          {/* SERVICE LOG TAB */}
           {tab === TABS.LOG && (
             <>
-              {/* Stats */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 14, marginBottom: 24 }}>
                 {[
                   { label: "Services This Month", value: thisMonth.length, color: "#f5d060" },
@@ -403,8 +396,6 @@ export default function ServiceTracker() {
                   </div>
                 ))}
               </div>
-
-              {/* Filters */}
               <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
                 <div style={{ flex: "0 0 auto" }}>
                   <label>Filter by Date</label>
@@ -418,14 +409,10 @@ export default function ServiceTracker() {
                   </select>
                 </div>
                 {(filterDate || filterCustomer) && (
-                  <button className="btn btn-outline" onClick={() => { setFilterDate(""); setFilterCustomer(""); }} style={{ alignSelf: "flex-end" }}>✕ Clear Filters</button>
+                  <button className="btn btn-outline" onClick={() => { setFilterDate(""); setFilterCustomer(""); }} style={{ alignSelf: "flex-end" }}>✕ Clear</button>
                 )}
-                <div style={{ alignSelf: "flex-end", marginLeft: "auto", fontSize: 13, color: "#7a6a30", fontWeight: 500 }}>
-                  {filteredLogs.length} record{filteredLogs.length !== 1 ? "s" : ""} found
-                </div>
+                <div style={{ alignSelf: "flex-end", marginLeft: "auto", fontSize: 13, color: "#7a6a30", fontWeight: 500 }}>{filteredLogs.length} records</div>
               </div>
-
-              {/* Log Table */}
               <div className="card" style={{ overflow: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead style={{ background: "#0a0800", borderBottom: "1px solid #3a2e10" }}>
@@ -438,7 +425,7 @@ export default function ServiceTracker() {
                       try { productList = JSON.parse(l.products || "[]"); } catch {}
                       return (
                         <tr key={l.id || i}>
-                          <td style={{ color: "#5a4a20", fontSize: 11 }}>{i + 1}</td>
+                          <td style={{ color: "#5a4a20", fontSize: 11 }}>{i+1}</td>
                           <td style={{ color: "#d4b96a", whiteSpace: "nowrap" }}>{formatDate(l.date)}</td>
                           <td style={{ fontWeight: 600, color: "#f5e6b0" }}>{l.customer}</td>
                           <td style={{ fontSize: 12 }}>
@@ -461,12 +448,10 @@ export default function ServiceTracker() {
             </>
           )}
 
-          {/* ── STOCK TAB ── */}
+          {/* STOCK TAB */}
           {tab === TABS.STOCK && (
             <>
-              {/* Stock Counts */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
-                {/* Batteries */}
                 <div className="card" style={{ padding: 20 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d060", marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>🔋 Battery Stock</div>
                   {BATTERY_TYPES.map(t => {
@@ -483,12 +468,10 @@ export default function ServiceTracker() {
                     );
                   })}
                 </div>
-
-                {/* Aerosols */}
                 <div className="card" style={{ padding: 20 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d060", marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>🌸 Aerosol Stock</div>
                   {AEROSOL_FLAVORS.map(f => {
-                    const qty = (stock.aerosols || {})[f] || 0;
+                    const qty = Number(stock.aerosols[f]) || 0;
                     const low = qty < LOW_STOCK_THRESHOLD;
                     return (
                       <div key={f} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #2a2000" }}>
@@ -502,8 +485,6 @@ export default function ServiceTracker() {
                   })}
                 </div>
               </div>
-
-              {/* Stock History */}
               <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d060", marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>📜 Stock Purchase History</div>
               <div className="card" style={{ overflow: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -514,7 +495,7 @@ export default function ServiceTracker() {
                     {stockHistory.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 30, color: "#5a4a20" }}>No purchase history yet.</td></tr>}
                     {stockHistory.map((h, i) => (
                       <tr key={h.id || i}>
-                        <td style={{ color: "#5a4a20", fontSize: 11 }}>{i + 1}</td>
+                        <td style={{ color: "#5a4a20", fontSize: 11 }}>{i+1}</td>
                         <td style={{ color: "#d4b96a", whiteSpace: "nowrap" }}>{formatDate(h.date)}</td>
                         <td style={{ fontWeight: 600, color: "#f5e6b0" }}>{h.item}</td>
                         <td style={{ color: "#c9a84c" }}>{h.vendor || "—"}</td>
@@ -529,25 +510,29 @@ export default function ServiceTracker() {
             </>
           )}
 
-          {/* ── REPORTS TAB ── */}
-          {tab === TABS.REPORTS && (
-            <ReportsTab logs={logs} customers={customers} />
-          )}
+          {/* REPORTS TAB */}
+          {tab === TABS.REPORTS && <ReportsTab logs={logs} customers={customers} />}
 
-          {/* ── CUSTOMERS TAB ── */}
+          {/* CUSTOMERS TAB */}
           {tab === TABS.CUSTOMERS && (
             <>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d060", marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>👥 Aerosol Customers</div>
+              <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#f5d060", textTransform: "uppercase", letterSpacing: 1 }}>👥 Aerosol Customers</div>
+                <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+                  <input placeholder="Search customers..." value={customerSearch} onChange={e => { setCustomerSearch(e.target.value); setCustomerPage(1); }} style={{ width: 220, padding: "8px 12px", fontSize: 13 }} />
+                  <span style={{ fontSize: 13, color: "#7a6a30", whiteSpace: "nowrap" }}>{filteredCustomers.length} customers</span>
+                </div>
+              </div>
               <div className="card" style={{ overflow: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead style={{ background: "#0a0800", borderBottom: "1px solid #3a2e10" }}>
                     <tr><th>#</th><th>Customer Name</th><th>Location</th><th>No. of Machines</th><th>Action</th></tr>
                   </thead>
                   <tbody>
-                    {customers.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", padding: 40, color: "#5a4a20" }}>No customers yet. Click "+ Add Customer" to get started.</td></tr>}
-                    {customers.map((c, i) => (
+                    {paginatedCustomers.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", padding: 40, color: "#5a4a20" }}>No customers found.</td></tr>}
+                    {paginatedCustomers.map((c, i) => (
                       <tr key={c.id || i}>
-                        <td style={{ color: "#5a4a20", fontSize: 11 }}>{i + 1}</td>
+                        <td style={{ color: "#5a4a20", fontSize: 11 }}>{(customerPage-1)*CUSTOMER_PAGE_SIZE+i+1}</td>
                         <td style={{ fontWeight: 600, color: "#f5e6b0" }}>{c.name}</td>
                         <td style={{ color: "#c9a84c" }}>{c.location || "—"}</td>
                         <td style={{ color: "#f5d060", fontWeight: 700, textAlign: "center" }}>{c.machines || "—"}</td>
@@ -562,6 +547,30 @@ export default function ServiceTracker() {
                   </tbody>
                 </table>
               </div>
+              {totalCustomerPages > 1 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ fontSize: 13, color: "#c9a84c", fontWeight: 500 }}>
+                    Showing {(customerPage-1)*CUSTOMER_PAGE_SIZE+1}–{Math.min(customerPage*CUSTOMER_PAGE_SIZE, filteredCustomers.length)} of {filteredCustomers.length}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => setCustomerPage(p => Math.max(1,p-1))} disabled={customerPage===1}
+                      style={{ cursor: customerPage===1?"not-allowed":"pointer", background: "transparent", border: "1px solid #3a2e10", borderRadius: 8, color: customerPage===1?"#333":"#c9a84c", padding: "6px 12px", fontSize: 13, fontFamily: "Poppins,sans-serif", fontWeight: 600 }}>← Prev</button>
+                    {Array.from({length: Math.min(totalCustomerPages,5)}, (_,i) => {
+                      let page;
+                      if (totalCustomerPages <= 5) page = i+1;
+                      else if (customerPage <= 3) page = i+1;
+                      else if (customerPage >= totalCustomerPages-2) page = totalCustomerPages-4+i;
+                      else page = customerPage-2+i;
+                      return (
+                        <button key={page} onClick={() => setCustomerPage(page)}
+                          style={{ cursor: "pointer", background: customerPage===page?"linear-gradient(135deg,#f5d060,#c9a84c)":"transparent", border: `1px solid ${customerPage===page?"#c9a84c":"#3a2e10"}`, borderRadius: 8, color: customerPage===page?"#000":"#c9a84c", padding: "6px 10px", minWidth: 36, fontSize: 13, fontFamily: "Poppins,sans-serif", fontWeight: 600 }}>{page}</button>
+                      );
+                    })}
+                    <button onClick={() => setCustomerPage(p => Math.min(totalCustomerPages,p+1))} disabled={customerPage===totalCustomerPages}
+                      style={{ cursor: customerPage===totalCustomerPages?"not-allowed":"pointer", background: "transparent", border: "1px solid #3a2e10", borderRadius: 8, color: customerPage===totalCustomerPages?"#333":"#c9a84c", padding: "6px 12px", fontSize: 13, fontFamily: "Poppins,sans-serif", fontWeight: 600 }}>Next →</button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </>}
@@ -576,18 +585,27 @@ export default function ServiceTracker() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
                   <label>Customer *</label>
-                  <select value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)}>
-                    <option value="">Select customer...</option>
-                    {customers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
+                  <div style={{ position: "relative" }}>
+                    <input placeholder="Type to search customer..." value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)} />
+                    {selectedCustomer && !customers.find(c => c.name === selectedCustomer) && customers.filter(c => c.name?.toLowerCase().includes(selectedCustomer.toLowerCase())).length > 0 && (
+                      <div style={{ position: "absolute", top: "110%", left: 0, right: 0, background: "#1a1500", border: "1px solid #c9a84c", borderRadius: 8, maxHeight: 200, overflowY: "auto", zIndex: 50 }}>
+                        {customers.filter(c => c.name?.toLowerCase().includes(selectedCustomer.toLowerCase())).slice(0,10).map(c => (
+                          <div key={c.id} onClick={() => setSelectedCustomer(c.name)}
+                            style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, color: "#f0e6c0", borderBottom: "1px solid #2a2000" }}
+                            onMouseEnter={e => e.currentTarget.style.background="#2a1a00"}
+                            onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                            {c.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label>Service Date</label>
                   <input type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
                 </div>
               </div>
-
-              {/* Product Entries */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <label style={{ margin: 0 }}>Product Entries</label>
@@ -596,7 +614,7 @@ export default function ServiceTracker() {
                 {products.map((p, i) => (
                   <div key={i} className="product-card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <span style={{ fontSize: 12, color: "#c9a84c", fontWeight: 700, letterSpacing: 1 }}>PRODUCT {i + 1}</span>
+                      <span style={{ fontSize: 12, color: "#c9a84c", fontWeight: 700, letterSpacing: 1 }}>PRODUCT {i+1}</span>
                       {products.length > 1 && <button className="btn btn-danger" onClick={() => removeProduct(i)}>✕ Remove</button>}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "140px 1fr 80px", gap: 10 }}>
@@ -610,10 +628,7 @@ export default function ServiceTracker() {
                       <div>
                         <label>{p.productType === "Aerosol" ? "Flavor" : "Battery Type"}</label>
                         <select value={p.type} onChange={e => updateProduct(i, "type", e.target.value)}>
-                          {p.productType === "Aerosol"
-                            ? AEROSOL_FLAVORS.map(f => <option key={f} value={f}>{f}</option>)
-                            : BATTERY_TYPES.map(t => <option key={t} value={t}>{t}</option>)
-                          }
+                          {p.productType === "Aerosol" ? AEROSOL_FLAVORS.map(f => <option key={f} value={f}>{f}</option>) : BATTERY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
                       <div>
@@ -624,13 +639,10 @@ export default function ServiceTracker() {
                   </div>
                 ))}
               </div>
-
-              {/* Summary */}
               <div style={{ background: "#1a1500", border: "1px solid #3a2e10", borderRadius: 8, padding: "10px 16px", display: "flex", gap: 24, fontSize: 13, color: "#c9a84c" }}>
                 <span>Aerosols: <strong style={{ color: "#4ade80", fontSize: 16 }}>{products.filter(p => p.productType === "Aerosol").reduce((s, p) => s + Number(p.qty), 0)}</strong></span>
                 <span>Batteries: <strong style={{ color: "#fb923c", fontSize: 16 }}>{products.filter(p => p.productType === "Battery").reduce((s, p) => s + Number(p.qty), 0)}</strong></span>
               </div>
-
               <div>
                 <label>Notes (optional)</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." rows={2} style={{ resize: "vertical" }} />
@@ -662,23 +674,13 @@ export default function ServiceTracker() {
                 : <div><label>Flavor</label><select value={stockForm.flavor} onChange={e => setStockForm(f => ({ ...f, flavor: e.target.value }))}>{AEROSOL_FLAVORS.map(f => <option key={f}>{f}</option>)}</select></div>
               }
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div>
-                  <label>Quantity Received</label>
-                  <input type="number" min="1" value={stockForm.qty} onChange={e => setStockForm(f => ({ ...f, qty: e.target.value }))} placeholder="0" />
-                </div>
-                <div>
-                  <label>Date Received</label>
-                  <input type="date" value={stockForm.dateReceived} onChange={e => setStockForm(f => ({ ...f, dateReceived: e.target.value }))} />
-                </div>
+                <div><label>Quantity Received</label><input type="number" min="1" value={stockForm.qty} onChange={e => setStockForm(f => ({ ...f, qty: e.target.value }))} placeholder="0" /></div>
+                <div><label>Date Received</label><input type="date" value={stockForm.dateReceived} onChange={e => setStockForm(f => ({ ...f, dateReceived: e.target.value }))} /></div>
               </div>
-              <div>
-                <label>Vendor Name</label>
-                <input value={stockForm.vendor} onChange={e => setStockForm(f => ({ ...f, vendor: e.target.value }))} placeholder="Supplier / Vendor name..." />
-              </div>
-              {/* Preview */}
+              <div><label>Vendor Name</label><input value={stockForm.vendor} onChange={e => setStockForm(f => ({ ...f, vendor: e.target.value }))} placeholder="Supplier / Vendor name..." /></div>
               <div style={{ background: "#1a1500", border: "1px solid #3a2e10", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c9a84c" }}>
                 {(() => {
-                  const cur = stockForm.itemType === "battery" ? (stock[stockForm.batteryType] || 0) : ((stock.aerosols || {})[stockForm.flavor] || 0);
+                  const cur = stockForm.itemType === "battery" ? (stock[stockForm.batteryType] || 0) : (Number(stock.aerosols[stockForm.flavor]) || 0);
                   const add = Number(stockForm.qty || 0);
                   return <span>Stock in hand: <strong style={{ color: "#f5d060" }}>{cur}</strong> → After adding: <strong style={{ color: "#4ade80" }}>{cur + add}</strong></span>;
                 })()}
@@ -692,24 +694,15 @@ export default function ServiceTracker() {
         </div>
       )}
 
-      {/* Add/Edit Customer Modal */}
+      {/* Customer Modal */}
       {showCustomerForm && (
         <div onClick={() => setShowCustomerForm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" }}>
           <div className="card slide-in" onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, margin: 20, padding: 28, background: "#0a0800", border: "1px solid #c9a84c" }}>
             <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 20, color: "#f5d060" }}>{editCustomerId ? "✎ Edit Customer" : "+ Add Customer"}</div>
             <div style={{ display: "grid", gap: 14 }}>
-              <div>
-                <label>Customer Name *</label>
-                <input value={customerForm.name} onChange={e => setCustomerForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Emaar Properties" />
-              </div>
-              <div>
-                <label>Location</label>
-                <input value={customerForm.location} onChange={e => setCustomerForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Dubai Marina" />
-              </div>
-              <div>
-                <label>No. of Machines</label>
-                <input type="number" min="1" value={customerForm.machines} onChange={e => setCustomerForm(f => ({ ...f, machines: e.target.value }))} placeholder="0" />
-              </div>
+              <div><label>Customer Name *</label><input value={customerForm.name} onChange={e => setCustomerForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Emaar Properties" /></div>
+              <div><label>Location</label><input value={customerForm.location} onChange={e => setCustomerForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Dubai Marina" /></div>
+              <div><label>No. of Machines</label><input type="number" min="1" value={customerForm.machines} onChange={e => setCustomerForm(f => ({ ...f, machines: e.target.value }))} placeholder="0" /></div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 22, justifyContent: "flex-end" }}>
               <button className="btn btn-outline" onClick={() => setShowCustomerForm(false)}>Cancel</button>
