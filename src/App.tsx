@@ -402,7 +402,8 @@ export default function App() {
   const statBoxes = [
     { label:"Services", value:monthStats.services, color:"#f5d060" },
     { label:"Aerosol Refill", value:monthStats.productTotals?.AEROSOL_REFILL||0, unit:"Nos", color:"#c9a84c" },
-    { label:"Urinal Pouch", value:monthStats.productTotals?.URINAL||0, unit:"Nos", color:"#fb923c" },
+    { label:"Urinal Pouch", value:(() => { let t=0; monthLogs.forEach(l => { try { JSON.parse(l.products||"[]").forEach(p => { if(p.categoryKey==="URINAL" && p.productName==="Urinal Pouch") t+=Number(p.qty||0); }); } catch {} }); return t; })(), unit:"Nos", color:"#fb923c" },
+{ label:"Urinal Disp", value:(() => { let t=0; monthLogs.forEach(l => { try { JSON.parse(l.products||"[]").forEach(p => { if(p.categoryKey==="URINAL" && p.productName==="Urinal Dispenser") t+=Number(p.qty||0); }); } catch {} }); return t; })(), unit:"Nos", color:"#e879f9" },
     { label:"Battery", value:monthStats.productTotals?.BATTERY||0, unit:"Nos", color:"#facc15" },
     { label:"Aerosol Disp", value:monthStats.productTotals?.AEROSOL_DISPENSER||0, unit:"Nos", color:"#a78bfa" },
     { label:"DPG", value:(() => { let t=0; monthLogs.forEach(l => { try { JSON.parse(l.products||"[]").forEach(p => { if(p.categoryKey==="OIL_COMPONENTS" && p.productName==="DPG") t+=Number(p.qty||0); }); } catch {} }); return t; })(), unit:"Ltrs", color:"#4ade80" },
