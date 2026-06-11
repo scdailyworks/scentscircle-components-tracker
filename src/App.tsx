@@ -370,11 +370,11 @@ export default function App() {
   }
 
   // ── PURE OIL ──
-  function addPureOil() {
+ function addPureOil() {
     if (!newPureOil.trim()) return;
     const updated = [...pureOilProducts, newPureOil.trim()];
     setPureOilProducts(updated);
-    postToSheet({ action:"updatePureOils", pureOilProducts:updated });
+    postToSheet({ action:"addPureOil", oilName:newPureOil.trim() });
     setNewPureOil(""); setShowPureOilForm(false);
   }
 
