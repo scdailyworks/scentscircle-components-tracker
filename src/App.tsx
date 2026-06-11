@@ -405,8 +405,8 @@ export default function App() {
     { label:"Urinal Pouch", value:monthStats.productTotals?.URINAL||0, unit:"Nos", color:"#fb923c" },
     { label:"Battery", value:monthStats.productTotals?.BATTERY||0, unit:"Nos", color:"#facc15" },
     { label:"Aerosol Disp", value:monthStats.productTotals?.AEROSOL_DISPENSER||0, unit:"Nos", color:"#a78bfa" },
-    { label:"DPG", value:monthStats.productTotals?.OIL_COMPONENTS||0, unit:"Ltrs", color:"#4ade80" },
-    { label:"Pure Oil", value:monthStats.productTotals?.PURE_OIL||0, unit:"Ltrs", color:"#7ec8e3" },
+    { label:"DPG", value:(() => { let t=0; monthLogs.forEach(l => { try { JSON.parse(l.products||"[]").forEach(p => { if(p.categoryKey==="OIL_COMPONENTS" && p.productName==="DPG") t+=Number(p.qty||0); }); } catch {} }); return t; })(), unit:"Ltrs", color:"#4ade80" },
+{ label:"Alcohol", value:(() => { let t=0; monthLogs.forEach(l => { try { JSON.parse(l.products||"[]").forEach(p => { if(p.categoryKey==="OIL_COMPONENTS" && p.productName==="Alcohol") t+=Number(p.qty||0); }); } catch {} }); return t; })(), unit:"Ltrs", color:"#7ec8e3" },
     { label:"Customers Served", value:monthStats.customers, color:"#f87171" },
   ];
 
