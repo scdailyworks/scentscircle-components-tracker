@@ -316,6 +316,19 @@ export default function App() {
   // ── SUBMIT LOG ──
   function submitLog() {
     if (!selectedCustomer || logProducts.length===0) return;
+    // Validate stock availability
+    const errors = [];
+    logProducts.forEach(p => {
+      const available = getStockQty(p.categoryKey, p.productName);
+      if (Number(p.qty) > available) {
+        const cat = CATEGORIES[p.categoryKey];
+        errors.push(`${p.productName}: Need ${p.qty} ${cat?.unit} but only ${available} ${cat?.unit} available`);
+      }
+    });
+    if (errors.length > 0) {
+      alert("⚠ Insufficient Stock!\n\n" + errors.join("\n") + "\n\nPlease add stock first or reduce quantity.");
+      return;
+    }
     const entry = {
       id: Date.now(), date: serviceDate, customer: selectedCustomer,
       products: JSON.stringify(logProducts), notes: logNotes,
@@ -808,7 +821,11 @@ export default function App() {
                       </div>
                       <div>
                         <label>Qty ({SERVICE_PRODUCT_TYPES.find(t=>t.key===p.categoryKey)?.unit||"Pcs"})</label>
-                        <input type="number" min="0" step="0.01" value={p.qty} onChange={e => updateLogProduct(i,"qty",e.target.value)} />
+                        <input type="number" min="0" step="0.01" value={p.qty} onChange={e => updateLogProduct(i,"qty",e.target.value)}
+                          style={{ borderColor: Number(p.qty) > getStockQty(p.categoryKey, p.productName) ? "#ef4444" : "#3a2e10" }} />
+                        <div style={{ fontSize:10, marginTop:3, color: Number(p.qty) > getStockQty(p.categoryKey, p.productName) ? "#ef4444" : "#7a6a30" }}>
+                          Available: {getStockQty(p.categoryKey, p.productName)} {SERVICE_PRODUCT_TYPES.find(t=>t.key===p.categoryKey)?.unit||"Pcs"}
+                        </div>
                       </div>
                     </div>
                   </div>
