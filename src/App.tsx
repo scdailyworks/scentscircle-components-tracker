@@ -319,8 +319,16 @@ export default function App() {
         const cat = CATEGORIES[p.categoryKey];
         errors.push(`${p.productName}: Need ${p.qty} ${cat?.unit} but only ${available} ${cat?.unit} available in ${logWarehouse}`);
       }
+      // Validate machine codes are mandatory
+      if (needsMachineCode(p.categoryKey, p.productName) && Number(p.qty) > 0) {
+        const codes = p.machineCodes || [];
+       const invalid = Array.from({length: parseInt(p.qty)||0}, (_,ci) => codes[ci]).filter(c => !c || c.trim().length !== 9).length;
+        if (invalid > 0) {
+          errors.push(`${p.productName}: All machine codes must be exactly 9 characters — ${invalid} invalid`);
+        }
+      }
     });
-    if (errors.length > 0) { alert("⚠ Insufficient Stock!\n\n" + errors.join("\n") + "\n\nPlease add stock first or reduce quantity."); return; }
+    if (errors.length > 0) { alert("⚠ Cannot Save!\n\n" + errors.join("\n")); return; }
     const entry = { id:Date.now(), date:serviceDate, customer:selectedCustomer, warehouse:logWarehouse, products:JSON.stringify(logProducts), notes:logNotes };
     const updatedStock = JSON.parse(JSON.stringify(stock));
     if (!updatedStock[logWarehouse]) updatedStock[logWarehouse] = {};
@@ -873,7 +881,16 @@ export default function App() {
                         {Array.from({length:parseInt(p.qty)||0},(_,ci)=>(
                           <div key={ci} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
                             <span style={{ fontSize:10, color:"#7a6a30", minWidth:60 }}>Unit {ci+1}:</span>
-                            <input className="machine-code-input" value={(p.machineCodes||[])[ci]||""} onChange={e=>updateMachineCode(i,ci,e.target.value)} placeholder={`Machine code ${ci+1}`} />
+                            <input className="machine-code-input" 
+  value={(p.machineCodes||[])[ci]||""} 
+  onChange={e=>updateMachineCode(i,ci,e.target.value)} 
+  placeholder={`Machine code ${ci+1} (9 digits)`}
+  maxLength={9}
+  style={{ 
+    borderColor: ((p.machineCodes||[])[ci]||"").length === 9 ? "#4ade80" : ((p.machineCodes||[])[ci]||"").length > 0 ? "#facc15" : "#3a2e10",
+    color: ((p.machineCodes||[])[ci]||"").length === 9 ? "#4ade80" : "#f0e6c0"
+  }} 
+/>
                           </div>
                         ))}
                       </div>
